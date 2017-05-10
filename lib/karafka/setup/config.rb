@@ -29,6 +29,12 @@ module Karafka
       setting :batch_mode, false
       #  whether to consume messages starting at the beginning or to just consume new messages
       setting :start_from_beginning, true
+      # Mapper used to remap names of topics, so we can have a clean internal topic namings despite
+      # using any Kafka provider that uses namespacing, etc
+      # It needs to implement two methods:
+      #   - #incoming - for remapping from the incoming message to our internal format
+      #   - #outgoing - for remapping from internal topic name into outgoing message
+      setting :topic_mapper, Routing::Mapper
 
       # Connection pool options are used for producer (Waterdrop)
       # They are configured automatically based on Sidekiq concurrency and number of routes
@@ -94,6 +100,18 @@ module Karafka
           Configurators::Base.descendants.each do |klass|
             klass.new(config).setup
           end
+        end
+
+        # Validate config based on ConfigurationSchema
+        # @return [Boolean] true if configuration is valid
+        # @raise [Karafka::Errors::InvalidConfiguration] raised when configuration
+        #   doesn't match with ConfigurationSchema
+        def validate!
+          validation_result = Karafka::Setup::ConfigSchema.call(config.to_h)
+
+          return true if validation_result.success?
+
+          raise Errors::InvalidConfiguration, validation_result.errors
         end
       end
     end

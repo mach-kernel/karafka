@@ -10,9 +10,15 @@ module Karafka
     class ParserError < BaseError; end
 
     # Raised when router receives topic name which does not correspond with any routes
-    #   This should never happen because we listed only to topics defined in routes
-    #   but theory is not always right. If you encounter this error - please contact
-    #   Karafka maintainers
+    # This can only happen in a case when:
+    #   - you've received a message and it was scheduled to Sidekiq background worker
+    #   - you've changed the routing, so router can no longer associate your topic to
+    #     any controller
+    #   - or in a case when you do a lot of metaprogramming and you change routing/etc on runtime
+    #
+    # In case this happens, you will have to create a temporary route that will allow
+    # you to "eat" everything from the Sidekiq queue.
+    # @see https://github.com/karafka/karafka/issues/135
     class NonMatchingRouteError < BaseError; end
 
     # Raised when we have few controllers(inherited from Karafka::BaseController)
@@ -46,5 +52,8 @@ module Karafka
 
     # Raised when we didn't use a topic that was defined as non-optional (required)
     class UnusedResponderRequiredTopic < BaseError; end
+
+    # Raised when configuration doesn't match with validation schema
+    class InvalidConfiguration < BaseError; end
   end
 end
